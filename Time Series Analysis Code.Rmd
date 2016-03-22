@@ -1,0 +1,111 @@
+---
+title: "Final Project_STAT 153"
+author: "Erica Wang"
+date: "December 5, 2015"
+output: word_document
+---
+## Data Preparation
+```{r}
+co2 <- ts(data.co2[,3],start=c(1981,1),frequency = 12)
+plot(as.xts(co2),major.format="%m-%Y",main="Figure 1: USA: Monthly CO2 Emissions from Fossil-Fuel Burning",xlab="Time", ylab="CO2 (tgc)")
+kpss.test(co2)
+diff.co2 <-diff(co2)
+plot(as.xts(diff.co2),major.format="%m-%Y",main="Figure 2: Plot of First Differences of Monthly CO2 Emissions", xlab="Time", ylab="First Difference of CO2 (tgc)")
+acf(diff.co2)
+sea.diff.co2 <- diff(diff.co2,lag=12)
+plot(as.xts(sea.diff.co2),major.format="%m-%Y",main="Figure 3: Plot of First and Seasonal Differences of Monthly CO2 Emissions", xlab="Time", ylab="First and seasoanl Difference of CO2 (tgc)")
+acf(sea.diff.co2,lag.max = 36,ci.type="ma",main="Figure 4: Sample ACF of First and Seasonal Differences of Monthly CO2 Emissions")
+tsdisplay(sea.diff.co2,lag.max = 36,ci.type="ma",main="Figure 3: Time Series Plot, Sample ACF and PACF of First and Seasonal Differences of CO2",points = F,xlab="Time", ylab="sea.diff.CO2 (tgc)")
+pacf(sea.diff.co2)
+```
+
+## ARIMA model
+```{r}
+model1 <- arima(co2, order=c(0,1,1),seasonal=list(order=c(0,1,1),period=12))
+model1 
+AIC(model1)
+```
+
+## Diagnostic checking
+```{r}
+res <- rstandard(model1)
+plot(res,main="Residuals from the ARIMA(0,1,1)×(0,1,1)[12] Model",xlab="Time")
+abline(h=0,col="red")
+tsdisplay(res,main="Figure 4: Residuals from the ARIMA(0,1,1)×(0,1,1)[12]",ci.type = "ma",points = F)
+tsdiag(model1,omit.initial = F)
+Box.test(res,type=c("Ljung-Box"))
+hist(res,main="Residuals from the ARIMA(0,1,1)×(0,1,1)[12] Model",ylab="Frequency",xlab="Standard Residuals")
+qqnorm(res,main="Normal Q-Q Plot of Residuals from the ARIMA(0,1,1)×(0,1,1)[12] Model")
+qqline(res,col='red')
+shapiro.test(res)
+```
+
+#Further check on the model, we consider ARIMA(0,1,2)*(0,1,1)12 ARIMA(1,1,1)*(0,1,1)12
+```{r}
+model2 <- arima(co2, order=c(0,1,2),seasonal=list(order=c(0,1,1),period=12))
+model2
+res2 <- rstandard(model2)
+shapiro.test(res2)
+model3 <-  arima(co2, order=c(1,1,1),seasonal=list(order=c(0,1,1),period=12))
+model3
+res3 <- rstandard(model3)
+```
+
+## Spectral Analysis: estimating spectral density
+```{r}
+periodogram(data.co2$Monthly_Co2)
+periodogram(diff(data.co2$Monthly_Co2),main="Figure 8: Periodogram of the First difference of CO2 Emissions")
+periodogram(sea.diff.co2) 
+smooth <- spec(sea.diff.co2,span=sqrt(length(co2)),ci.plot =T,ci.col=NULL,main="Figure 9: Smoothed Periodogram")
+f=seq(0.001,0.5,by=0.001)
+lines(f,ARMAspec(model=list(ma=-0.5533,seasonal=list(sma=-0.8370,period=12)), freq=f,plot=F)$spec,lty="solid")
+abline(v=c(1/12,2/12,3/12,4/12,5/12,6/12),lty="dotted")
+ARMAspec(model=list(ma=-0.5533,seasonal=list(sma=-0.8370),period=12))
+```
+
+## ARCH/GARCH Model
+```{r}
+library(tseries)
+plot(rstandard(model1),type="h")
+plot(rstandard(model1)^2,type="h",main="Figure 5: Squared Residuals of the ARIMA(0,1,1)×(0,1,1)[12]")
+acf(abs(rstandard(model1)),lag.max = 50,main="Sample ACF of the Absolute Value of the Residuals")
+pacf(abs(rstandard(model1)),lag.max = 50,main="PACF of the Absolute Value of the Residuals from the ARIMA(0,1,1)×(0,1,1)[12] Model")
+acf(rstandard(model1)^2,lag.max = 50)
+pacf(rstandard(model1)^2,lag.max = 50)
+eacf(rstandard(model1)^2)
+eacf(abs(rstandard(model1)))
+g.co2<-garch(rstandard(model1),order=c(2,2))
+summary(g.co2)
+AIC(g.co2)
+g1.co2 <- garch(rstandard(model1),order=c(1,1),trace=F)
+AIC(g1.co2)
+g2.co2 <- garch(rstandard(model1),order=c(2,1))
+AIC(g2.co2)
+library(FinTS)
+ArchTest(co2)
+```
+
+## Diagnostic checking
+```{r}
+res2 <- residuals(g1.co2)
+plot(res2,type="h")
+qqnorm(res2,main="Figure 5: Normal Q-Q plot of Residuals from the GARCH(1,1) Model")
+qqline(res2,col="red")
+shapiro.test(res2)
+acf(res2^2,na.action = na.omit,main="Figure 6: Sample ACF of Squared Residuals")
+acf(abs(res2),na.action = na.omit, main="Sample ACF of Abosulte Value of Residuals")
+library(tseries)
+gBox(g1.co2,method="absolute")
+plot((fitted(g1.co2)[,1])^2,type="l",ylab="Conditional Variance", main="Figure 7: Estimated Conditional Variances of the CO2 Emissions")
+```
+
+##Forecasting
+```{r}
+library(astsa)
+par(mfrow = c(2, 1)) 
+CO2_Emissions<-co2[1:264]
+sarima.for(CO2_Emissions, 12, 0,1,1,0,1,1,12) 
+lines(x=265:276,y=co2[265:276],col="blue")
+Two_Year_Predicted_CO2_Emissions <- co2
+sarima.for(Two_Year_Predicted_CO2_Emissions, 24, 0,1,1,0,1,1,12) 
+```
