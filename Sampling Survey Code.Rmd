@@ -1,0 +1,260 @@
+---
+output: pdf_document
+---
+
+### Report 3:  Data Preparation and Preliminary Analysis
+
+```{r}
+load("34792-0001-Data.rda")
+```
+
+#### Fulfill the missing gender by sampling with different proportion of male and female students in the sample.
+```{r}
+set.seed(3)
+sample(c("Male", "Female"),4,replace= T, prob=c(0.514,0.485))
+da34792.0001$Q1[which(is.na(da34792.0001$Q1))] = c("(1) Male","(2) Female", "(1) Male","(1) Male")
+```
+
+
+#### Weighting class adjustment on BMI
+```{r}
+wt.56 <- da34792.0001[da34792.0001$FORM=="(1) 5th / 6th Grade Version",]$STU_WT
+wt.789 <- da34792.0001[da34792.0001$FORM=="(2) 7th / 8th / 9th Grade Version",]$STU_WT
+wt.10 <- da34792.0001[da34792.0001$FORM=="(3) 10th Grade Version",]$STU_WT
+df.no.na <- da34792.0001[!is.na(da34792.0001$BMI),]
+
+factor.56 <- sum(wt.56)/sum(df.no.na[df.no.na$FORM=="(1) 5th / 6th Grade Version",]$STU_WT)
+factor.789 <- sum(wt.789)/sum(df.no.na[df.no.na$FORM=="(2) 7th / 8th / 9th Grade Version",]$STU_WT)
+factor.10 <- sum(wt.10)/sum(df.no.na[df.no.na$FORM=="(3) 10th Grade Version",]$STU_WT)
+df.no.na[df.no.na$FORM=="(1) 5th / 6th Grade Version",]$STU_WT = df.no.na[df.no.na$FORM=="(1) 5th / 6th Grade Version",]$STU_WT * factor.56
+df.no.na[df.no.na$FORM=="(2) 7th / 8th / 9th Grade Version",]$STU_WT = df.no.na[df.no.na$FORM=="(2) 7th / 8th / 9th Grade Version",]$STU_WT * factor.789
+df.no.na[df.no.na$FORM=="(3) 10th Grade Version",]$STU_WT = df.no.na[df.no.na$FORM=="(3) 10th Grade Version",]$STU_WT * factor.10
+
+```
+
+#### Fulfill the missing values for district IDs by deduction imputation
+```{r}
+sum(is.na(da34792.0001$DIST_ID))
+mydata=df.no.na
+table(da34792.0001[which(is.na(da34792.0001$DIST_ID)),]$SCHL_ID)
+
+mydata$DIST_ID[mydata$SCHL_ID > 43150 & mydata$SCHL_ID < 50000]
+# 43202 and 43203 are in district 63
+mydata$DIST_ID[mydata$SCHL_ID > 35500 & mydata$SCHL_ID < 35707]
+# 35703 and 35706 are in district 154
+mydata$DIST_ID[mydata$SCHL_ID > 94200 & mydata$SCHL_ID < 94503]
+# 94501 and 94502 are in district 211
+mydata$DIST_ID[mydata$SCHL_ID == 43203] = 63
+mydata$DIST_ID[mydata$SCHL_ID == 94501] = 211
+mydata$DIST_ID[mydata$SCHL_ID == 35703] = 154
+mydata$DIST_ID[mydata$SCHL_ID == 35706] = 154
+mydata$DIST_ID[mydata$SCHL_ID == 94502] = 211
+mydata$DIST_ID[mydata$SCHL_ID == 43202] = 63
+
+#Check if there is NA value
+sum(is.na(mydata$SCHL_ID))
+sum(is.na(mydata$BMI))
+
+```
+
+
+
+#### Set up design variables and describe the design to survey package
+```{r}
+library(survey)
+#rename the variable
+df.1 <- mydata[,c("CASEID","SCHL_ID","DIST_ID","DIVISION","STU_WT","Q1","Q3B","Q5","Q6_1","Q6_2","Q6_3","Q6_4","Q6_5","Q11","Q19","BMI","BMI_COMP","Q44","Q6_COMP","FORM")]
+colnames(df.1) <- c("CASEID","SCHL_ID","DIST_ID","CD_ID","STU_WT","gender","age","Hispanic ethnicity","Africa American","White","Asian","American Indian","Native Hawaiian/Pacific Islander","Family_well_off","exercise_days","BMI","BMI_COMP","Overall_health_rating", "Race","Grade")
+
+# Fulfill missing ages
+df.1$Grade[which(is.na(df.1$age) == T)]
+set.seed(1000)
+sample(15:16,1)
+set.seed(2500)
+sample(12:15,1)
+set.seed(5000)
+sample(10:12,1)
+df.1$age[is.na(df.1$age == T)] = c(15,15,11)
+
+#BMI indicator for overweight male and female students
+obese.standard.m <- c(22.1,23.2,24.2,25.2,26,26.8,27.5,28.2)
+obese.standard.f <- c(23.1,24.1,25.2,26.2,27.2,28.1,28.8,29.6)
+
+df.1['obese'] = 0
+age <-  unique(df.1$age)
+age.order <- sort(age)
+
+for(i in 1:8){
+df.1$obese[df.1$gender=="(1) Male" & df.1$age==age.order[i] & df.1$BMI >= obese.standard.m[i]] = 1
+}
+for(i in 1:8){
+df.1$obese[df.1$gender=="(2) Female" & df.1$age==age.order[i] & df.1$BMI >= obese.standard.f[i]] = 1
+}
+
+
+da3=svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID+CASEID, weights=~STU_WT, data=df.1)
+
+```
+
+
+#### Describe in words what steps you took to get the data to this point.
+First we realized that there were many observations with school districts not reported. But we realized that the value of the school id corresponded perfectly with district number. Therefore, for the six schools that had no data on school districts, we created a small range of values for the school id and assigned it to that district for the range it fell in. We used weighting class adjustment for BMI missing values. We have also created a new data frame that renames the variables to clear names and gets rid of all the columns we do not need. We added columns of 1s(overweight) and 0s(not overweight) to compute the percentage of overweight students by using the sampling design package later.
+
+#### Summary Statistics 
+ 
+##### Estimated percentage of overweight students by gender and age w/o using weights
+```{r}
+df.male <-df.1[df.1$gender=="(1) Male",]
+df.female <- df.1[df.1$gender=="(2) Female",]
+
+m.bmi.age <- list()
+for (i in 1:length(age)){
+m.bmi.age[[i]] <- df.male[df.male$age==age[i],]$BMI   
+}
+
+m.obese.rate <- c()
+for (i in 1:8) {
+  m.obese.rate[i] <- length(m.bmi.age[[i]][m.bmi.age[[i]]>obese.standard.m[i]])/length(m.bmi.age[[i]])
+}
+
+f.bmi.age <- list()
+for (i in 1:length(age)){
+f.bmi.age[[i]] <- df.female[df.female$age==age[i],]$BMI   
+}
+
+f.obese.rate <- c()
+for (i in 1:8) {
+  f.obese.rate[i] <- length(f.bmi.age[[i]][f.bmi.age[[i]]>obese.standard.f[i]])/length(f.bmi.age[[i]])
+}
+
+obese.rate.mf <- c(m.obese.rate[4],f.obese.rate[4],m.obese.rate[6],f.obese.rate[6],m.obese.rate[5],f.obese.rate[5],m.obese.rate[1],f.obese.rate[1],m.obese.rate[3],f.obese.rate[3],m.obese.rate[7],f.obese.rate[7],f.obese.rate[2],f.obese.rate[2],m.obese.rate[8],f.obese.rate[8])
+
+df.obese.rate <- data.frame(matrix(obese.rate.mf,ncol=8,nrow=2))
+
+row.names(df.obese.rate) <- c("Male","Female")
+colnames(df.obese.rate) <- c("Age 10","Age 11","Age 12","Age 13","Age 14","Age 15","Age 16","Age 17")
+df.obese.rate
+```
+
+##### Overall estimated percentage of overweight students in U.S. by using weights
+```{r}
+est.percentage.obese <-  svymean(~obese,da3)
+est.percentage.obese
+```
+
+##### 95% Confidence Interval for overweight student 
+```{r}
+c(est.percentage.obese[1]-1.96*0.0045,est.percentage.obese[1]+1.96*0.0045)
+```
+
+
+##### Estimated percentage of overweight students via gender and age by using weights
+```{r}
+df.f.17<- df.1[df.1$gender=="(2) Female" & df.1$age==age.order[8],]
+df.f.17<-df.f.17[!(df.f.17$CD_ID==3|df.f.17$CD_ID==5|df.f.17$CD_ID==9),]
+
+da.m.10 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[1],])
+da.m.11 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[2],])
+da.m.12 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[3],])
+da.m.13 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[4],])
+da.m.14 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[5],])
+da.m.15 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[6],])
+da.m.16 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[7],])
+da.m.17 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(1) Male" & df.1$age==age.order[8],])
+da.f.10 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[1],])
+da.f.11 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[2],])
+da.f.12 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[3],])
+da.f.13 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[4],])
+da.f.14 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[5],])
+da.f.15 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[6],])
+da.f.16 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID, weights=~STU_WT, data=df.1[df.1$gender=="(2) Female" & df.1$age==age.order[7],])
+da.f.17 <- svydesign(id=~1,strata=~CD_ID + DIST_ID + SCHL_ID,weights=~STU_WT, data=df.f.17)
+
+
+```
+
+#### Graphical Displays
+```{r,echo=F,fig.width=5}
+# First Plot
+hist(mydata$BMI,main="Histogram of original BMI",xlab="BMI")
+
+library(ggplot2)
+ggplot(df.1, aes(x = BMI))+ggtitle("Unweighted distribution of BMI")+theme_bw()+geom_histogram(aes(y =..density..), colour="#6666CC",fill="#99CCFF")+geom_density(fill=NA, colour="red")+ geom_vline(xintercept=27)+ annotate("text", x = 27, y = 0.12, label = "BMI = 27",colour="blue")
+
+
+svyhist(~BMI,da3,freq=F,ylim=c(0,0.12),main="Weighted distribution of BMI")
+lines(density(df.1$BMI),col="blue")
+
+
+# Second Plot
+boxplot(da34792.0001$BMI ~ da34792.0001$Q3B, main="Unweighted boxplot of BMI vs. Age",xlab="Age",ylab="BMI") 
+svyboxplot(BMI ~ as.factor(age),design=da3,main="Weighted boxplot of BMI vs. Age ",xlab="Age",ylab="BMI",col=terrain.colors(8)) 
+
+
+svyboxplot(BMI ~ gender,design=da3,main="Weighted boxplot of BMI vs. Gender ",ylab="BMI",col=c("blue","red"))
+
+svyboxplot(BMI~Race,design=da3, main="Weighted boxplot of BMI vs. Race",ylab="BMI", las=2,col=terrain.colors(7),xlab="Race",cex.axis=0.3) 
+
+svyboxplot(BMI~Family_well_off,design=da3, main="Weighted boxplot of BMI vs. Family Well-off ",ylab="BMI", las=2,col=terrain.colors(5),cex.axis=0.55) 
+
+svyboxplot(BMI~Overall_health_rating,design=da3, main="Weighted boxplot of BMI vs. Overall health rating",ylab="BMI", las=2,col=terrain.colors(4),cex.axis=0.8) 
+
+
+# Third Plot
+library(vcd)
+age <- c(10:17)
+
+m.obese <- c()
+for (i in 1:8){
+  m.obese[i] <- sum(df.male[df.male$age==age[i],]$BMI >= obese.standard.m[i])
+}
+
+f.obese <- c()
+for (i in 1:8){
+  f.obese[i] <- sum(df.female[df.female$age==age[i],]$BMI >= obese.standard.f[i])
+}
+
+m.not.obese <- c()
+for (i in 1:8){
+  m.not.obese[i] <- sum(df.male[df.male$age==age[i],]$BMI < obese.standard.m[i])
+}
+
+f.not.obese <- c()
+for (i in 1:8){
+  f.not.obese[i] <- sum(df.female[df.female$age==age[i],]$BMI < obese.standard.f[i])
+}
+
+obese.data <- c(m.obese,f.obese,m.not.obese,f.not.obese)
+dim(obese.data) <- c(8,2,2)
+dimnames(obese.data) = list(Age=c(10:17),Gender=c("Male","Female"),Obese = c("Y","N"))
+
+mosaicplot(obese.data,color=c(6,4),main="Mosaic plot of obesity via gender and age")
+
+```
+
+#### Linear regression analysis
+Will run linear regressions on gender and grade, and add different third variables to see which ones, in the presence of gender and grade, are good predictors of BMI.
+```{r,fig.width=5}
+lm = lm(BMI~ gender + Grade, data = df.1)
+summary(lm)
+
+lm.race = lm(BMI~ gender + Grade + Race, data = df.1)
+summary(lm.race)
+
+lm.health = lm(BMI~ gender + Grade + Overall_health_rating , data = df.1)
+summary(lm.health)
+
+lm.family = lm(BMI~ gender + Grade + Family_well_off , data = df.1)
+summary(lm.family)
+lm.exercise = lm(BMI~ gender + Grade + exercise_days , data = df.1)
+summary(lm.exercise)
+
+lm_BMI_percentiles = lm(BMI~ gender + Grade + BMI_COMP , data = df.1)
+summary(lm_BMI_percentiles)
+plot(lm.health)
+
+adjr2 = matrix(c(0.068,.1245,0.05066,0.05831,4.444,4.309,4.491,4.474), nrow = 2,byrow = F,dimnames = list(c("Adj. R^2","Residual Standard Error"), c("   Race","  Health", "Exercise","  Familly Well Off")))
+adjr2
+```
+Compared to just gender and grade as the only explanatory variables, every new explanatory variable adds accuracy to the BMI estimate because the adjusted R^2 increases. Race, how well off the family is (student's perception), and days of exercise only increase adjusted R^2 slightly, like from .047 to 0.06 or 0.07. However, the overall health rating (student's perception) variable increases adjusted R^2 to 0.0125. We included the BMI percentiles factor variable to illustrate what a very good predictor would do to the model, i.e., reduce its residual standard error significantly. However, this is not a fair predictor because it is measured based on the knowledge of actual BMI. While none of these factor variables (excluded BMI percentilies) are great models, being that they only predict differences based on the averages of those groups, the health rating variables makes a substantial difference to the subpar model of gender and grade. Had there been fewer missing values among other variables, it would have been easier and appropriate to create a more robust model with better predictors.
+
