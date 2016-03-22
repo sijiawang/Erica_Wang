@@ -2,7 +2,7 @@
 title: "Final Project_STAT 153"
 author: "Erica Wang"
 date: "December 5, 2015"
-output: word_document
+output: pdf_document
 ---
 ## Data Preparation
 ```{r}
