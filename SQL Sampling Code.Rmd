@@ -1,0 +1,137 @@
+---
+title: "SQL Sampling Code"
+author: "Erica Wang"
+output: pdf_document
+---
+
+## Problem 1. What is customer Karen Ng's address?
+```sql
+SELECT Street, City, State_Prov, Zip_Postal_Code, 
+Country FROM DIVECUST WHERE DIVECUST.`Name`='Karen Ng'
+```
+#### Output
+2134 Elmhill Pike	Klamath Falls	OR	97603	U.S.A.
+
+## Problem 2. At what destination and site(s) might you find a Spotted Eagle Ray?
+```sql
+SELECT Destination_Name, Site_Name FROM 
+BIOLIFE INNER JOIN BIOSITE ON 
+BIOLIFE.`Species_No`=BIOSITE.`Species_No` 
+INNER JOIN SITES on BIOSITE.`Site_No`=SITES.`Site_No` 
+INNER JOIN DEST ON SITES.`Destination_No`=DEST.`Destination_No` 
+WHERE BIOLIFE.`Common_Name`='Spotted Eagle Ray'
+```
+#### Output
+```{r,echo=FALSE}
+table <- read.csv("query_result.csv")
+table
+```
+
+
+## Problem 3. What sites might Lorraine Vega dive on her trip?
+```sql
+SELECT Site_Name FROM DIVECUST 
+INNER JOIN DIVEORDS ON 
+DIVECUST.`Customer_No`=DIVEORDS.`Customer_No` 
+INNER JOIN DEST ON 
+DEST.`Destination_Name`=DIVEORDS.`Destination` 
+INNER JOIN SITES ON 
+DEST.`Destination_No`=SITES.`Destination_No` 
+WHERE DIVECUST.`Name`='Lorraine Vega'
+```
+#### Output
+Palancar Reef, Santa Rosa Reef, Chancanab Reef, Punta Sur, Yocab Reef
+
+## Problem 4. What is the cost of the equipment rental for Louis Jazdzewski?
+```sql
+SELECT SUM(Rental_Price * Qty) FROM DIVESTOK 
+INNER JOIN DIVEITEM ON DIVESTOK.`Item_No`=DIVEITEM.`Item_No` 
+INNER JOIN DIVEORDS ON DIVEORDS.`Order_No`=DIVEITEM.`Order_No` 
+INNER JOIN DIVECUST ON DIVECUST.`Customer_No`=DIVEORDS.`Customer_No` 
+WHERE DIVEITEM.`Rental_Sale`='Rental' 
+AND DIVECUST.`Name`='Louis Jazdzewski';
+```
+#### Output 
+
+82
+
+## Problem 5: What are the names and addresses of the diveshop customers who are renting masks?
+
+
+## Problem 6: What are the names of the wildlife that Mary Rioux might see on her trip. Are there any Shipwrecks there (give names)?
+
+```sql
+SELECT DISTINCT Common_Name FROM BIOLIFE 
+INNER JOIN BIOSITE ON BIOLIFE.`Species_No` = BIOSITE.`Species_No` 
+INNER JOIN SITES ON BIOSITE.`Site_No`=SITES.`Site_No` 
+INNER JOIN DEST ON SITES.`Destination_No`=DEST.`Destination_No`
+INNER JOIN DIVEORDS ON DEST.`Destination_Name`=DIVEORDS.`Destination`
+INNER JOIN DIVECUST ON DIVEORDS.`Customer_No`=DIVECUST.`Customer_No`
+WHERE DIVECUST.`Name`='Mary Rioux'
+```
+### Output：
+Common_Name: Swell Shark, Bat Ray, California Moray, Lingcod, Cabezon, Yellow Jack, Redtail Surfperch, White Sea Bass, Rock Greenling, Senorita, Surf Smelt
+
+## Problem 7: Who is paying the maximum amount for single type of rental equipment?
+
+```sql
+SELECT i.Qty * s.Rental_Price as Total,c.Name
+from DIVEITEM i inner join DIVEORDS o ON i.`Order_No`=o.`Order_No` inner join DIVECUST c on c.`Customer_No`=o.`Customer_No`
+inner join DIVESTOK s on i.Item_No = s.Item_No WHERE i.`Rental_Sale`='Rental' ORDER BY Total desc LIMIT 1;
+```
+### Output:
+Total: 150   
+Name: Sven Schiro
+
+
+## Problem 8: What are the names of customers who are paying in cash?
+
+```sql
+SELECT Name FROM DIVECUST INNER JOIN DIVEORDS ON DIVECUST.`Customer_No`=DIVEORDS.`Customer_No` WHERE DIVEORDS.`PaymentMethod`='Cash'
+```
+
+### Output:
+Name: Mary Rioux, Keith Lucas, Marcus Selby, Tony Rees, Lorraine Vega
+
+## Problem 9: Produce a list of all equipment being rented for a dive vacation that costs more than $30000, make the list in descending order of the rental price of the equipment.
+
+```sql
+SELECT s.`Description`,s.`Rental_Price`,i.`Rental_Sale`,o.`VacationCost` FROM DIVESTOK s INNER JOIN DIVEITEM i ON s.`Item_No`=i.`Item_No` INNER JOIN DIVEORDS o ON i.`Order_No`=o.`Order_No` WHERE i.`Rental_Sale`='Rental' AND o.`VacationCost`>30000 ORDER BY s.`Rental_Price` desc
+```
+
+### Output:
+```{r,echo=FALSE}
+q7 <- read.csv("q7.csv")
+library(knitr)
+library(pander)
+pandoc.table(q7)
+```
+
+## Problem 10: Who is renting teal colored equipment?
+
+```sql
+SELECT DISTINCT Name FROM DIVECUST c INNER JOIN DIVEORDS o on c.`Customer_No`=o.`Customer_No` INNER JOIN DIVEITEM i ON o.`Order_No`=i.`Order_No` INNER JOIN DIVESTOK s on i.`Item_No`=s.`Item_No` WHERE i.`Rental_Sale`='Rental' AND s.`Description` LIKE '%Teal'
+```
+### Output:
+Name: David Burgett, Ken Soule
+
+## Problem 11: Which locations have an avg temperature of more than 75 degrees Farenheit and a travel cost of under $4000?
+
+```sql
+SELECT d.`Destination_Name` FROM DEST d WHERE d.`Avg_Temp_F`>75 AND d.`Travel_Cost`<4000 
+```
+
+### Outcome:
+Destination_Name: Cozumel, Florida
+
+
+## Problem 12: Who spend(s) the most amount of money on traveling cost?
+
+```sql
+SELECT c.Name, d.`Travel_Cost` FROM DIVECUST c INNER JOIN DIVEORDS o ON c.`Customer_No`=o.`Customer_No` INNER JOIN DIVEITEM i ON o.`Order_No`=i.`Order_No` INNER JOIN DIVESTOK s ON i.`Item_No`=s.`Item_No` INNER JOIN DEST d on d.`Destination_Name`=o.`Destination` ORDER BY d.`Travel_Cost` desc LIMIT 1
+```
+### Output:
+Name: Marcus Selby
+
+Travel_Cost: 5000
+ 
