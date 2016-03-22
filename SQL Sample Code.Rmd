@@ -1,5 +1,5 @@
 ---
-title: "SQL Sampling Code"
+title: "SQL Sample Code"
 author: "Erica Wang"
 output: pdf_document
 ---
