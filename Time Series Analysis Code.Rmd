@@ -99,7 +99,7 @@ gBox(g1.co2,method="absolute")
 plot((fitted(g1.co2)[,1])^2,type="l",ylab="Conditional Variance", main="Figure 7: Estimated Conditional Variances of the CO2 Emissions")
 ```
 
-##Forecasting
+## Forecasting
 ```{r}
 library(astsa)
 par(mfrow = c(2, 1)) 
