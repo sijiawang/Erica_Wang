@@ -73,8 +73,10 @@ Common_Name: Swell Shark, Bat Ray, California Moray, Lingcod, Cabezon, Yellow Ja
 
 ```sql
 SELECT i.Qty * s.Rental_Price as Total,c.Name
-from DIVEITEM i inner join DIVEORDS o ON i.`Order_No`=o.`Order_No` inner join DIVECUST c on c.`Customer_No`=o.`Customer_No`
-inner join DIVESTOK s on i.Item_No = s.Item_No WHERE i.`Rental_Sale`='Rental' ORDER BY Total desc LIMIT 1;
+FROM DIVEITEM i inner join DIVEORDS o ON i.`Order_No`=o.`Order_No` 
+INNER JOIN DIVECUST c on c.`Customer_No`=o.`Customer_No`
+INNER JOIN DIVESTOK s on i.Item_No = s.Item_No WHERE i.`Rental_Sale`='Rental' 
+ORDER BY Total desc LIMIT 1;
 ```
 ### Output:
 Total: 150   
@@ -84,7 +86,9 @@ Name: Sven Schiro
 ## Problem 7: What are the names of customers who are paying in cash?
 
 ```sql
-SELECT Name FROM DIVECUST INNER JOIN DIVEORDS ON DIVECUST.`Customer_No`=DIVEORDS.`Customer_No` WHERE DIVEORDS.`PaymentMethod`='Cash'
+SELECT Name FROM DIVECUST INNER JOIN DIVEORDS 
+ON DIVECUST.`Customer_No`=DIVEORDS.`Customer_No` 
+WHERE DIVEORDS.`PaymentMethod`='Cash'
 ```
 
 ### Output:
@@ -93,7 +97,11 @@ Name: Mary Rioux, Keith Lucas, Marcus Selby, Tony Rees, Lorraine Vega
 ## Problem 8: Produce a list of all equipment being rented for a dive vacation that costs more than $30000, make the list in descending order of the rental price of the equipment.
 
 ```sql
-SELECT s.`Description`,s.`Rental_Price`,i.`Rental_Sale`,o.`VacationCost` FROM DIVESTOK s INNER JOIN DIVEITEM i ON s.`Item_No`=i.`Item_No` INNER JOIN DIVEORDS o ON i.`Order_No`=o.`Order_No` WHERE i.`Rental_Sale`='Rental' AND o.`VacationCost`>30000 ORDER BY s.`Rental_Price` desc
+SELECT s.`Description`,s.`Rental_Price`,i.`Rental_Sale`,o.`VacationCost` 
+FROM DIVESTOK s INNER JOIN DIVEITEM i ON s.`Item_No`=i.`Item_No` 
+INNER JOIN DIVEORDS o ON i.`Order_No`=o.`Order_No` WHERE i.`Rental_Sale`='Rental' 
+AND o.`VacationCost`>30000 
+ORDER BY s.`Rental_Price` desc
 ```
 
 ### Output:
@@ -107,7 +115,10 @@ pandoc.table(q7)
 ## Problem 9: Who is renting teal colored equipment?
 
 ```sql
-SELECT DISTINCT Name FROM DIVECUST c INNER JOIN DIVEORDS o on c.`Customer_No`=o.`Customer_No` INNER JOIN DIVEITEM i ON o.`Order_No`=i.`Order_No` INNER JOIN DIVESTOK s on i.`Item_No`=s.`Item_No` WHERE i.`Rental_Sale`='Rental' AND s.`Description` LIKE '%Teal'
+SELECT DISTINCT Name FROM DIVECUST c INNER JOIN DIVEORDS o 
+ON c.`Customer_No`=o.`Customer_No` INNER JOIN DIVEITEM i 
+ON o.`Order_No`=i.`Order_No` INNER JOIN DIVESTOK s on i.`Item_No`=s.`Item_No` 
+WHERE i.`Rental_Sale`='Rental' AND s.`Description` LIKE '%Teal'
 ```
 ### Output:
 Name: David Burgett, Ken Soule
@@ -115,7 +126,8 @@ Name: David Burgett, Ken Soule
 ## Problem 10: Which locations have an avg temperature of more than 75 degrees Farenheit and a travel cost of under $4000?
 
 ```sql
-SELECT d.`Destination_Name` FROM DEST d WHERE d.`Avg_Temp_F`>75 AND d.`Travel_Cost`<4000 
+SELECT d.`Destination_Name` FROM DEST d 
+WHERE d.`Avg_Temp_F`>75 AND d.`Travel_Cost`<4000 
 ```
 
 ### Outcome:
@@ -125,7 +137,12 @@ Destination_Name: Cozumel, Florida
 ## Problem 11: Who spend(s) the most amount of money on traveling cost?
 
 ```sql
-SELECT c.Name, d.`Travel_Cost` FROM DIVECUST c INNER JOIN DIVEORDS o ON c.`Customer_No`=o.`Customer_No` INNER JOIN DIVEITEM i ON o.`Order_No`=i.`Order_No` INNER JOIN DIVESTOK s ON i.`Item_No`=s.`Item_No` INNER JOIN DEST d on d.`Destination_Name`=o.`Destination` ORDER BY d.`Travel_Cost` desc LIMIT 1
+SELECT c.Name, d.`Travel_Cost` FROM DIVECUST c INNER JOIN DIVEORDS o 
+ON c.`Customer_No`=o.`Customer_No` INNER JOIN DIVEITEM i 
+ON o.`Order_No`=i.`Order_No` INNER JOIN DIVESTOK s 
+ON i.`Item_No`=s.`Item_No` INNER JOIN DEST d 
+ON d.`Destination_Name`=o.`Destination` 
+ORDER BY d.`Travel_Cost` desc LIMIT 1
 ```
 ### Output:
 Name: Marcus Selby
